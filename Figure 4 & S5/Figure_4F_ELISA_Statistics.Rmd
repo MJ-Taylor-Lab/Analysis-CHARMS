@@ -1,0 +1,299 @@
+---
+title: "Statistics_1x_3x_5x"
+date: "`r format(Sys.time(), '%d %b %Y')`"
+author: "Taylor Lab"
+output: 
+  html_document:
+    toc: true
+    code_folding: "hide"
+    df_print: kable
+    knitr:
+      fig.width: 8
+      fig.height: 6
+---
+
+### Load necessary libraries and packages
+```{r, warning = F, message = F}
+library(pacman)
+pacman::p_load(data.table, ggplot2, lubridate, stringr, ggpubr, dplyr, cowplot, readxl, scales, knitr, tidyr, patchwork)
+```
+
+
+```{r, warning = F, message = F}
+
+################################################################################
+
+save   <- TRUE
+figure <- "Figure 4/4F/"
+
+################################################################################
+
+# PREPROCESSING
+Input_Directory <- file.path("/Volumes/TAYLOR-LAB/Synthetic Myddosome Paper/6_Manuscript/Source files/", figure)
+NAME_KEY        <- fread("~/Documents/Github/Analysis_Synthethic_Myddosome/FigureScripts/Figure 4 & S6/Figure_4_ELISA_CL_KEY.csv", header = T) 
+
+# load functions
+source("~/Documents/Github/Analysis_Synthethic_Myddosome/FigureScripts/functions.R")
+
+# process ELISA
+plate_data_raw <- ELISA_Fx(Input_Directory, Output_Directory)
+plate_data     <- left_join(plate_data_raw, NAME_KEY)
+plate_data     <- plate_data %>% filter(CELL_LINE != "NA") %>% unique()
+
+# ensure correct column type assignment
+plate_data$CONDITION <- as.factor(plate_data$CONDITION)
+
+################################################################################
+# subset and normalize the Dose Response Data
+
+plotting_data <- plate_data %>% group_by(CELL_LINE, CL_NAME_ON_PLOT, STIM_DAY, CONDITION, STIM_CONCENTRATION, Date, Plate)
+
+baseline <- plotting_data %>%
+  group_by(Plate) %>%
+  summarise(baseline_control_value = min(Concentration))
+
+plotting_data <- left_join(plotting_data, baseline) %>%
+  mutate(Concentration_REDUCED = case_when(!is.na(baseline_control_value) ~ Concentration - baseline_control_value, TRUE ~ Concentration))
+
+# Baseline-corrected per cell line, per condition, per stimulation and retrieve the max values to normalize for day-to-day differences.
+control_mean_per_day <- plotting_data %>%
+  group_by(CELL_LINE, CL_NAME_ON_PLOT, CONDITION, STIM_CONCENTRATION, Date, STIM_DAY, Plate) %>%
+  reframe(Concentration_REDUCED = Concentration_REDUCED) %>%
+  ungroup() %>%
+  group_by(STIM_DAY) %>%
+  reframe(control_MEASUREMENT = max(Concentration_REDUCED))
+
+# Normalize the baseline-corrected values by dividing each value by the max value per stimulation day.
+plotting_data <- left_join(plotting_data, control_mean_per_day) %>%
+  group_by(CELL_LINE, CL_NAME_ON_PLOT, CONDITION, STIM_CONCENTRATION, Date, STIM_DAY) %>%
+  mutate(Concentration_NORMALIZED = case_when(Concentration_REDUCED / control_MEASUREMENT < 0 ~ 0, TRUE ~ Concentration_REDUCED / control_MEASUREMENT),
+         Relative_Intensity_mean = mean(Concentration_NORMALIZED)) %>%
+  ungroup()
+
+# Calculate the normalized means per grouped variables
+plotting_means <- plotting_data %>%
+  group_by(CELL_LINE, CL_NAME_ON_PLOT, 
+           STIM_CONCENTRATION,
+           CONDITION,
+           Date, STIM_DAY, Plate,
+           PLOTTING_COLOR) %>%
+  distinct(Relative_Intensity_mean, STIM_DAY, .keep_all = TRUE) %>%
+  ungroup()
+
+
+# Perform a t-test to compare the means per cell line per concentration
+concentration_values <- unique(plotting_means$STIM_CONCENTRATION)
+stat.test_list       <- list()
+
+for (concentration_val in concentration_values) {
+  concentration_data <- plotting_means %>% filter(STIM_CONCENTRATION == concentration_val)
+  stat_test_result   <- ggpubr::compare_means(Relative_Intensity_mean ~ CL_NAME_ON_PLOT, data = concentration_data, method = "t.test") %>% mutate(STIM_CONCENTRATION = concentration_val)
+  stat.test_list[[as.character(concentration_val)]] <- stat_test_result
+}
+stat.test <- do.call(rbind, stat.test_list)
+
+# Convert the STIM_CONCENTRATION column to numeric
+stat.test$STIM_CONCENTRATION <- as.numeric(as.character(stat.test$STIM_CONCENTRATION))
+
+# Order the dataframe based on the STIM_CONCENTRATION column
+stat.test <- stat.test[order(-stat.test$STIM_CONCENTRATION), ]
+
+# Create a data frame with unique CL_NAME_ON_PLOT and corresponding PLOTTING_COLOR
+color_mapping <- unique(plotting_means[, c("CL_NAME_ON_PLOT", "PLOTTING_COLOR")])
+
+# Merge the plotting_means data frame with the color_mapping data frame
+plotting_means_merged <- plotting_means %>%
+  left_join(color_mapping) %>%
+  mutate(CL_NAME_ON_PLOT = factor(CL_NAME_ON_PLOT, levels = unique(plotting_means$CL_NAME_ON_PLOT)))
+
+# Calculate the mean of means and standard error of the mean per cell line and per condition
+plotting_stats <- plotting_data %>%
+  group_by(CELL_LINE, CL_NAME_ON_PLOT, STIM_CONCENTRATION, PLOTTING_COLOR) %>%
+  summarise(Relative_Intensity_sem  = sem(Relative_Intensity_mean),
+            Relative_Intensity_mean = mean(Relative_Intensity_mean)) %>%
+  distinct(.keep_all = TRUE)
+
+################################################################################
+
+# Deriving breaks from unique STIM_CONCENTRATION values
+concentration_breaks <- sort(unique(plotting_stats$STIM_CONCENTRATION))
+```
+
+
+```{r, warning = F, message = F, fig.dim=c(12,7)}
+# Plot
+figure_4F_Dose_Response_ELISA <- 
+  ggplot(data = plotting_stats, aes(x = STIM_CONCENTRATION, y = Relative_Intensity_mean, group = CL_NAME_ON_PLOT, fill = CL_NAME_ON_PLOT)) +
+  geom_ribbon(aes(x = STIM_CONCENTRATION, 
+                  ymin = Relative_Intensity_mean - Relative_Intensity_sem,
+                  ymax = Relative_Intensity_mean + Relative_Intensity_sem,
+                  fill = CL_NAME_ON_PLOT),
+              alpha = 0.4, show.legend = F) +
+  geom_path(size = 0.75, aes(col = CL_NAME_ON_PLOT)) +
+  geom_text(data = subset(plotting_stats, STIM_CONCENTRATION == max(STIM_CONCENTRATION)), 
+            aes(label    = gsub("CHARMS-sT6BM-", "", CL_NAME_ON_PLOT), 
+                x        = max(STIM_CONCENTRATION), 
+                y        = Relative_Intensity_mean,
+                fontface = "bold"),
+            color = setNames(unique(plotting_means_merged$PLOTTING_COLOR), unique(plotting_means_merged$CL_NAME_ON_PLOT)),
+            hjust = -0.1, vjust = 0.5, size = 12) +
+  labs(x = "IL-1 Conc. [ng/mL]", 
+       y = "Relative Response") +
+  scale_fill_manual(name  = "CL_NAME_ON_PLOT", values = setNames(unique(plotting_means_merged$PLOTTING_COLOR), unique(plotting_means_merged$CL_NAME_ON_PLOT))) +
+  scale_color_manual(name = "CL_NAME_ON_PLOT", values = setNames(unique(plotting_means_merged$PLOTTING_COLOR), unique(plotting_means_merged$CL_NAME_ON_PLOT))) +
+  guides(color = "none", fill = guide_legend(reverse = TRUE, ncol = 1)) +
+  theme_cowplot(font_family = "Helvetica") + 
+  theme(legend.position = c(0.05,0.9),
+        legend.title = element_blank(),
+        plot.margin = unit(c(20,20,20,20), 'mm')) +
+  scale_x_log10(breaks = concentration_breaks, labels = concentration_breaks)
+
+figure_4F_Dose_Response_ELISA
+```
+
+
+### Checking for Normal distrbution with QQ-Plots
+
+QQ plot draws the correlation between a given data and the normal distribution.
+
+```{r, echo = F, warning = F, message = F, fig.dim=c(8,2)}
+pacman::p_load(tidyverse, ggpubr, rstatix)
+
+# subset the means data
+data <- plotting_means[, c("CL_NAME_ON_PLOT", "Relative_Intensity_mean", "STIM_CONCENTRATION", "PLOTTING_COLOR")]
+# data$CL_NAME_ON_PLOT <- gsub("CHARMS-sT6BM-", "", x = data$CL_NAME_ON_PLOT)
+
+data$CL_NAME_ON_PLOT <- as.factor(data$CL_NAME_ON_PLOT)
+
+concentration_values <- unique(data$STIM_CONCENTRATION)
+
+# Create a list to store ggplot objects
+qq_plots <- list()
+
+for (concentration_val in concentration_values) {
+  concentration_data <- plotting_means %>% filter(STIM_CONCENTRATION == concentration_val)
+  res_aov <- aov(Relative_Intensity_mean ~ CL_NAME_ON_PLOT, data = concentration_data)
+  qq_plot <- ggqqplot(res_aov$residuals, id = FALSE) +
+    ggtitle(concentration_val) +
+    theme_cowplot(font_size = 10)
+  
+  qq_plots[[as.character(concentration_val)]] <- qq_plot
+}
+
+# Combine all plots into one using facet_wrap
+combined_plot <- wrap_plots(qq_plots, ncol = length(concentration_values))
+
+# Print the combined plot
+print(combined_plot)
+
+```
+
+### Checking for Normal distrbution with a Shapiro-Wilk Test
+
+Check normality assumption with a Shapiro-Wilk test for each group level. If the data is normally distributed, the p-value should be greater than 0.05.
+
+```{r, warning = F, message = F}
+
+shapiro.test_list <- list()
+
+for (concentration_val in concentration_values) {
+  
+  concentration_data <- plotting_means %>% filter(STIM_CONCENTRATION == concentration_val)
+  
+  res_aov <- aov(Relative_Intensity_mean ~ CL_NAME_ON_PLOT, data = concentration_data)
+  
+  # do we have normally distributed values?
+  # here we assume normal distribution, so p-values > 0.05 are GOOD!
+  
+  shapiro_test_result <- shapiro.test(res_aov$residuals)[["p.value"]]
+  shapiro.test_list[[as.character(concentration_val)]] <- shapiro_test_result
+}
+
+shapiro.test <- as.table(unlist(shapiro.test_list)) %>%
+  as.data.frame() %>%
+  setnames(old = c("Var1", "Freq"), new = c("STIM_CONCENTRATION", "p")) %>%
+  mutate(normally_distributed = case_when(p > 0.05 ~ T, T ~ F))
+
+shapiro.test
+
+```
+
+
+### Checking for Homogneity of variance assumption with Levene
+
+The Levene’s test will be used to check the homogeneity of variances.
+p-value is > 0.05 indicate that there is no significant difference between variances across groups. Therefore, we assume the homogeneity of variances in the different concentration treatment groups.
+
+```{r, warning = F, message = F}
+
+levene.test_list <- list()
+
+for (concentration_val in concentration_values) {
+  
+  concentration_data <- plotting_means %>% filter(STIM_CONCENTRATION == concentration_val)
+  
+  levene <- concentration_data %>% 
+    levene_test(Relative_Intensity_mean ~ CL_NAME_ON_PLOT) %>%
+    mutate(STIM_CONCENTRATION = concentration_val)
+  
+  levene.test_list[[as.character(concentration_val)]] <- levene$p
+}
+
+levene.test <- as.table(unlist(levene.test_list)) %>%
+  as.data.frame() %>%
+  setnames(old = c("Var1", "Freq"), new = c("STIM_CONCENTRATION", "p")) %>%
+  mutate(equal_variances = case_when(p > 0.05 ~ T, T ~ F))
+
+levene.test
+```
+
+All concentrations have p-values above 0.05, so there are no significant differences between groups.
+
+### One-Way ANOVA & Tukey
+
+#### ANOVA
+
+Values show homogeneous variances and normal distributions, therefore a normal ANOVA test can be performed.
+
+```{r, warning = F, message = F}
+
+anova_test_results <- data %>%
+  group_by(STIM_CONCENTRATION) %>%
+  anova_test(Relative_Intensity_mean ~ CL_NAME_ON_PLOT)
+
+# anova_test_results
+subset(anova_test_results[,c("STIM_CONCENTRATION", "F", "ges", "p", "p<.05")], p < 0.05)
+
+```
+
+#### Tukey post-hoc
+
+A significant one-way ANOVA is generally followed up by Tukey post-hoc tests to perform multiple pairwise comparisons between groups.
+
+```{r, warning = F, message = F}
+
+pwc_tukey_hsd <- data %>% 
+  group_by(STIM_CONCENTRATION) %>%
+  tukey_hsd(Relative_Intensity_mean ~ CL_NAME_ON_PLOT)
+
+pwc_tukey_hsd$STIM_CONCENTRATION <- reorder(pwc_tukey_hsd$STIM_CONCENTRATION, as.numeric(pwc_tukey_hsd$STIM_CONCENTRATION))
+
+# pwc_tukey_hsd[,c("STIM_CONCENTRATION", "p.adj", "p.adj.signif", "group1", "group2")] %>% arrange(desc(STIM_CONCENTRATION))
+
+subset(pwc_tukey_hsd[,c("STIM_CONCENTRATION", "p.adj", "p.adj.signif", "group1", "group2")], p.adj < 0.05)  %>% arrange(desc(STIM_CONCENTRATION))
+
+if (save) {
+  save_to_data_tay <- file.path("/Volumes/TAYLOR-LAB/Synthetic Myddosome Paper/6_Manuscript/Source files/", figure)
+  save_to_local    <- file.path("~/Desktop/Source files/", figure)
+  save_to          <- ifelse(test = dir.exists(save_to_data_tay), yes = save_to_data_tay, no = save_to_local)
+  
+  if (dir.exists(save_to)) {print(paste0("Files will be saved to ", save_to))} else {dir.create(save_to, recursive = T); print(paste0("Files will be saved to ", save_to))}
+  
+  # save tables
+  fwrite(pwc_tukey_hsd,  file.path(save_to, "significance_pwc_tukey.csv"))
+}
+```
+
+
+
+
