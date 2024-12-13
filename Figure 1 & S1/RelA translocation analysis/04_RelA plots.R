@@ -4,10 +4,8 @@ library(ggplot2)
 library(plotrix)
 library(tidyverse)
 library(ggh4x)
-# library(ggdark)
 
-
-setwd("/Users/u_cao/Downloads")
+setwd("~")
 
 Table_cl069_Sti <- fread("~/0_069_Sti_All.csv")
 Table_cl204_Sti <- fread("~/1_204_Sti_All.csv")

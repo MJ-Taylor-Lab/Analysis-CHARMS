@@ -1,7 +1,7 @@
 library(data.table)
 library(dplyr)
 
-setwd("/Users/u_cao/Downloads")
+setwd("~")
 
 Table1 <- fread("~/MyExpt_FilteredNuclei.csv")
 Table2 <- fread("~/MyExpt_FilteredNuclei.csv")

@@ -339,12 +339,6 @@ ggplot(
     color = "black",
     linetype = "dashed"
   ) +
-  # scale_color_manual(values = c("#fdcc8a","#fc8d59","#b30000")) +
-  # scale_fill_manual(values = c("#fdcc8a","#fc8d59","#b30000")) +
-  # facet_wrap2(
-  #   ~COHORT~IMAGE, axes = "all", remove_labels = "all",
-  #   nrow = 4, strip.position = "right"
-  # ) +
   facet_rep_grid(
     ~COHORT~IMAGE, 
     repeat.tick.labels = "all"
@@ -371,69 +365,3 @@ ggsave(
   height = 12,
   width = 50
 )
-
-
-# # Max Int histogram plot ----
-# ggplot(
-#   data = Tracks_TRAF6 %>%
-#     mutate(COHORT = factor(COHORT, levels = c("MyD88-GFP-synTRAF6-BD-1x TRAF6", "MyD88-GFP-synTRAF6-BD-3x TRAF6", "MyD88-GFP-synTRAF6-BD-5x TRAF6")))
-# ) +
-#   geom_histogram(
-#     binwidth = 1,
-#     aes(
-#       x = COMPLEMENTARY_NORMALIZED_INTENSITY_1,
-#       y = after_stat(count),
-#       color = COHORT,s
-#       fill = COHORT
-#     ),
-#     alpha = 0.3
-#   ) +
-#   scale_x_continuous(
-#     limits = c(-0.5, 20) #Note that the bin = 4, so the lower limit has to be -bin/2
-#   ) +
-#   geom_vline(
-#     aes(
-#       xintercept = 4.5
-#     ),
-#     color = "black",
-#     linetype = "dashed"
-#   ) +
-#   geom_vline(
-#     aes(
-#       xintercept = 1.5
-#     ),
-#     color = "grey",
-#     linetype = "dashed"
-#   ) +
-#   scale_color_manual(values = c("#fdcc8a","#fc8d59","#b30000")) +
-#   scale_fill_manual(values = c("#fdcc8a","#fc8d59","#b30000")) +
-#   facet_rep_wrap(
-#     ~COHORT,
-#     repeat.tick.labels = "all",
-#     ncol = 1,
-#     scales = "free_y",
-#     strip.position = "right"
-#   ) +
-#   labs(
-#     x = "Size of CHARMS associated TRAF6 assemblies (a.u.)",
-#     y = "Counts",
-#     color = "COHORT",
-#     fill = "COHORT",
-#   ) +
-#   theme_classic() +
-#   theme(
-#     legend.position = "none",
-#     #legend.position = c(0.7,0.7)
-#     panel.spacing.y = unit(1.1, "lines"),
-#     strip.background = element_blank()
-#   )
-# 
-# ggsave(
-#   "TRAF6 max intensity plot_histogram.pdf",
-#   #scale = 1,
-#   units = "cm",
-#   family = "Helvetica",
-#   height = 12.5,
-#   width = 9.5
-# )
-# 

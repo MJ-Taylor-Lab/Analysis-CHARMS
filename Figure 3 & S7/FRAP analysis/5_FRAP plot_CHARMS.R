@@ -98,54 +98,6 @@ ggsave(
   width = 9
 )
 
-# Line Plot_after Bleaching ----
-ggplot(
-  data = FRAP_Mean %>% filter(TIME <= 100 & TIME >= 0),
-  aes(
-    x = TIME,
-    y = MeanNormInt,
-    color = COHORT
-  )
-) +
-  geom_line(linewidth=1) +
-  geom_ribbon(
-    aes(
-      x = TIME,
-      ymin = MeanNormInt - SE,
-      ymax = MeanNormInt + SE,
-      fill = COHORT
-    ),
-    alpha = 0.3,
-    color =NA
-  ) +
-  scale_y_continuous(limits = c(0,0.4), breaks = seq(0,0.4,0.2)) +
-  scale_x_continuous(expand = c(0.01, 0)) +
-  scale_color_manual(values = c("#1F97CC","#F07E2C","#7816C2","#BA2511")) +
-  scale_fill_manual(values = c("#1F97CC","#F07E2C","#7816C2","#BA2511")) +
-  labs(
-    x = "Time",
-    y = "Normalized Intensity",
-    color = ""
-  ) +
-  facet_wrap2(
-    ~COHORT, axes = "all",
-    nrow = 4, strip.position = "right"
-  ) +
-  theme_classic() +
-  theme(
-    #legend.position = "bottom"
-    legend.position="none" #remove legend
-  )
-
-ggsave(
-  "FRAP_SEM_afterBleaching.pdf",
-  #scale = 1,
-  units = "cm",
-  family = "Helvetica",
-  height = 9,
-  width = 8
-)
-
 # Line plot by Rep ----
 ggplot() +
   geom_line(
@@ -180,48 +132,4 @@ ggsave(
   family = "Helvetica",
   height = 20,
   width = 18
-)
-
-# Line plot group all ----
-ggplot(
-data = FRAP_Mean_GroupAll,
-aes(
-  x = TIME,
-  y = MeanNormInt,
-  color = COHORT
-)
-) +
-  geom_line(linewidth=0.75) +
-  geom_ribbon(
-    aes(
-      x = TIME,
-      ymin = MeanNormInt - SD,
-      ymax = MeanNormInt + SD,
-      fill = COHORT
-    ),
-    alpha = 0.3,
-    color =NA
-  ) +
-  scale_y_continuous(breaks = seq(0,1,0.2)) +
-  scale_x_continuous(expand = c(0.01, 0)) +
-  scale_color_manual(values = c("#1F97CC","#F07E2C","#7816C2","#BA2511")) +
-  scale_fill_manual(values = c("#1F97CC","#F07E2C","#7816C2","#BA2511")) +
-  labs(
-    x = "Time",
-    y = "Normalized Intensity",
-    color = ""
-  ) +
-  theme_classic() +
-  theme(  
-    #legend.position = "bottom"
-    legend.position="none" #remove legend
-  )
-
-ggsave(
-  "FRAP_groupAll_SD.pdf",
-  #scale = 1,
-  units = "cm",
-  family = "Helvetica",
-  height = 6,
-  width = 9
 )
