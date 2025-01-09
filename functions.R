@@ -1,28 +1,22 @@
-ELISA_Fx <- function(Input_Directory, Output_Directory) {
+################################################################################
+### MANUSCRIPT FUNCTIONS #######################################################
+################################################################################
+
+ELISA_Fx <- function(Input_Directory, Output_Directory = Input_Directory) {
   # Initialize an empty data frame to store all plates' data
   All_plates_data = data.frame()
   
-  # Get a list of subdirectories matching the pattern "Plate_"
-  subdirs <- list.files(Input_Directory, recursive = FALSE, full.names = TRUE, pattern = "Plate_\\d+_\\d{8}$")
-  # input_plate_dir = "~/Plate_1_20220609"
+  # Get a list of Excel files in the main directory matching the pattern
+  excel_files <- list.files(Input_Directory, recursive = T, full.names = TRUE, pattern = "\\d{8}_Plate_\\d+\\.xlsx$")
   
   # Check if there are plates found
-  if (length(subdirs) > 0) {
+  if (length(excel_files) > 0) {
     print("Plates exist!")
-    # Iterate through each plate directory
-    for (input_plate_dir in subdirs) {
+    # Iterate through each Excel file
+    # file = "SOTA/01_raw_data/ELISA_PLATES/20220623_Plate_1.xlsx"
+    for (file in excel_files) {
       
-      print(paste("Processing", input_plate_dir))
-      
-      # Input_plate <- '~/Plate_1_20230314'
-      Input_plate <- input_plate_dir
-      
-      # List all files in the current plate directory
-      Input_plate_list <- list.files(Input_plate, full.names = TRUE)
-      
-      # Separate Excel and CSV files
-      excel_files <- Input_plate_list[grepl("\\.xlsx$", Input_plate_list, ignore.case = TRUE)]
-      csv_files   <- Input_plate_list[grepl("\\.csv$", Input_plate_list, ignore.case = TRUE)]
+      print(paste("Processing", file))
       
       # Define patterns for reading sheets in files
       MEASUREMENTS_PATTERN <- c("MEASURE", "VALUE")
@@ -48,17 +42,6 @@ ELISA_Fx <- function(Input_Directory, Output_Directory) {
         return(sheet_dfs)
       }
       
-      # Function to read and process a CSV file based on a pattern
-      read_and_process_csv <- function(file, patterns) {
-        if (grepl(patterns, file, ignore.case = TRUE)) {
-          data <- fread(file, header = FALSE)
-          data <- as.vector(as.matrix(data))
-          return(data)
-        } else {
-          return(NULL)
-        }
-      }
-      
       # Initialize lists for storing results
       MEASUREMENTS <- list()
       CELL_LINES   <- list()
@@ -70,35 +53,16 @@ ELISA_Fx <- function(Input_Directory, Output_Directory) {
       STIMULANTS   <- list()
       STIM_CONCENTRATIONS <- list()
       
-      # If there are Excel files, extract sheets based on patterns
-      if (length(excel_files) > 0) {
-        for (file in excel_files) {
-          MEASUREMENTS <- c(MEASUREMENTS, read_matching_sheets(file, patterns = MEASUREMENTS_PATTERN))
-          CELL_LINES   <- c(CELL_LINES,   read_matching_sheets(file, patterns = CELL_LINES_PATTERN))
-          CONDITIONS   <- c(CONDITIONS,   read_matching_sheets(file, patterns = CONDITIONS_PATTERN))
-          DILUTIONS    <- c(DILUTIONS,    read_matching_sheets(file, patterns = DILUTIONS_PATTERN))
-          STIM_DAYS    <- c(STIM_DAYS,    read_matching_sheets(file, patterns = STIM_DAYS_PATTERN))
-          STIM_TIMES   <- c(STIM_TIMES,   read_matching_sheets(file, patterns = STIM_TIMES_PATTERN))
-          PATHWAYS     <- c(PATHWAYS,     read_matching_sheets(file, patterns = PATHWAYS_PATTERN))
-          STIMULANTS   <- c(STIMULANTS,   read_matching_sheets(file, patterns = STIMULANTS_PATTERN))
-          STIM_CONCENTRATIONS <- c(STIM_CONCENTRATIONS, read_matching_sheets(file, patterns = STIM_CONCENTRATIONS_PATTERN))
-          
-        }
-      } else if (length(csv_files) > 0) {
-        # If there are CSV files, process them based on patterns
-        for (file in csv_files) {
-          MEASUREMENTS <- c(MEASUREMENTS, read_and_process_csv(file, patterns = MEASUREMENTS_PATTERN))
-          CELL_LINES   <- c(CELL_LINES,   read_and_process_csv(file, patterns = CELL_LINES_PATTERN))
-          CONDITIONS   <- c(CONDITIONS,   read_and_process_csv(file, patterns = CONDITIONS_PATTERN))
-          DILUTIONS    <- c(DILUTIONS,    read_and_process_csv(file, patterns = DILUTIONS_PATTERN))
-          STIM_DAYS    <- c(STIM_DAYS,    read_and_process_csv(file, patterns = STIM_DAYS_PATTERN))
-          STIM_TIMES   <- c(STIM_TIMES,   read_and_process_csv(file, patterns = STIM_TIMES_PATTERN))
-          PATHWAYS     <- c(PATHWAYS,     read_and_process_csv(file, patterns = PATHWAYS_PATTERN))
-          STIMULANTS   <- c(STIMULANTS,   read_and_process_csv(file, patterns = STIMULANTS_PATTERN))
-          STIM_CONCENTRATIONS <- c(STIM_CONCENTRATIONS, read_and_process_csv(file, patterns = STIM_CONCENTRATIONS_PATTERN))
-          
-        }
-      }
+      # Extract sheets based on patterns
+      MEASUREMENTS <- c(MEASUREMENTS, read_matching_sheets(file, patterns = MEASUREMENTS_PATTERN))
+      CELL_LINES   <- c(CELL_LINES,   read_matching_sheets(file, patterns = CELL_LINES_PATTERN))
+      CONDITIONS   <- c(CONDITIONS,   read_matching_sheets(file, patterns = CONDITIONS_PATTERN))
+      DILUTIONS    <- c(DILUTIONS,    read_matching_sheets(file, patterns = DILUTIONS_PATTERN))
+      STIM_DAYS    <- c(STIM_DAYS,    read_matching_sheets(file, patterns = STIM_DAYS_PATTERN))
+      STIM_TIMES   <- c(STIM_TIMES,   read_matching_sheets(file, patterns = STIM_TIMES_PATTERN))
+      PATHWAYS     <- c(PATHWAYS,     read_matching_sheets(file, patterns = PATHWAYS_PATTERN))
+      STIMULANTS   <- c(STIMULANTS,   read_matching_sheets(file, patterns = STIMULANTS_PATTERN))
+      STIM_CONCENTRATIONS <- c(STIM_CONCENTRATIONS, read_matching_sheets(file, patterns = STIM_CONCENTRATIONS_PATTERN))
       
       # Setting defaults
       default_dilution <- 5           # 1:5 dilution
@@ -122,7 +86,7 @@ ELISA_Fx <- function(Input_Directory, Output_Directory) {
         STIM_CONCENTRATION = as.numeric(unlist(STIM_CONCENTRATIONS))
       )
       
-      #Removing Empty Wells
+      # Removing Empty Wells
       Plate <- Plate %>% filter(CELL_LINE != "BLANK") %>% as.data.table()
       
       # Standard Curve ---------------------------------------------------------
@@ -133,21 +97,10 @@ ELISA_Fx <- function(Input_Directory, Output_Directory) {
         group_by(CELL_LINE) %>%
         summarise(MEASUREMENT_mean = mean(MEASUREMENT)) %>%
         mutate(CELL_LINE = as.numeric(CELL_LINE),
-               Date  = as_date(str_extract(basename(input_plate_dir), "\\d{8}"))) %>%
+               Date  = as_date(str_extract(basename(file), "\\d{8}"))) %>%
         arrange(CELL_LINE)
       
-      # Why do we add the -1 in the formula?
-      # The use of -1 in the regression formula is specifically about forcing the intercept to be zero. If you omit the -1 or use + 0 in the formula, 
-      # you're allowing the model to estimate the intercept, and it could be any real number, not necessarily 1. 
-      # The general form of a linear regression model without forcing the intercept to be zero is: y=β0 + β1 ⋅x + ϵ
-      # Here, β0 is the intercept term. When you include an intercept term, the model is free to estimate any real number for β0. 
-      # If you omit the intercept term (using -1 or + 0), the model becomes: y = β1 ⋅ x + ϵ 
-      # In this case, the intercept is *forced to be zero*, and the line goes through the origin (0,0). 
-      # If you include the intercept term, the line is allowed to have a non-zero intercept. 
-      # So, in summary, without forcing the intercept to be zero, the intercept can take any real value. 
-      # If you force it to be zero (using -1 or + 0), the intercept is constrained to be exactly zero.
-      
-      # We will only use standard curve values of 1 and below (machine is optimized to measure absorption values between 0 and 1.1)
+      # Fit the linear model
       Fit <- lm(CELL_LINE ~ MEASUREMENT_mean - 1, data = Plate_Standards[Plate_Standards$MEASUREMENT_mean <= 1.1, ])
       
       R       <- summary(Fit)$r.squared
@@ -167,7 +120,7 @@ ELISA_Fx <- function(Input_Directory, Output_Directory) {
                  y = 150, label = paste0("IL-Amount = \n", signif(Fit$coefficients[1], digits = 4), " * Intensity")) +
         labs(x = "Measured Values",
              y = "IL-Concentration (pg/mL)") +
-        ggtitle(label = paste0(basename(Input_plate)),
+        ggtitle(label = paste0(basename(file)),
                 subtitle = paste0("R^2 = ", Rsquare, "\n IL-Amount = ", signif(Fit$coefficients[1], digits = 4), " * Intensity")) +
         scale_color_manual(values = c("#79d2a3", "salmon"), guide = FALSE) +
         theme_classic() +
@@ -176,35 +129,26 @@ ELISA_Fx <- function(Input_Directory, Output_Directory) {
         theme(legend.position = "none")
       
       # Saving the plot
-      Save_Name <- paste0(Input_plate, "/", basename(Input_plate), "_Standard_Curve.pdf")
+      Save_Name <- file.path(Output_Directory, paste0(basename(file), "_Standard_Curve.pdf"))
       ggsave(Save_Name, plot = p, height = 3 * 3, width = 5 * 4)
       
       # Further processing of the Plate object if needed
       
-      
       # Fitting Data To Standard Curve ----------------------------------------
+      # tmp_Plate <- Plate
+      # Plate <- tmp_Plate
       Plate <- Plate %>%
         filter(CONDITION != "CALIBRATION") %>%
-        mutate(Plate = as.numeric(gsub("(DR_)?Plate_(\\d+)_\\d{8}$", "\\2", basename(input_plate_dir))),
-               Date  = as_date(str_extract(basename(input_plate_dir), "\\d{8}")),
-               MEASUREMENT = as.numeric(MEASUREMENT),
-               
-               # METHOD I: Correct negative values to zero, multiply measurements by dilution factor and THEN extrapolate values based on SC
-               # ########  20231206 @Fakun: We should adjust for the dilution factor BEFORE extrapolating values based on the Standard Curve..
-               # ########
-               # MEASUREMENT_DIL_ADJ = (case_when(MEASUREMENT < 0 ~ 0, TRUE ~ MEASUREMENT)*DILUTION),
-               # Concentration = (Fit$coefficients[1]*MEASUREMENT_DIL_ADJ),
-               
-               # METHOD II: Extrapolate values based on SC and THEN multiply measurements by dilution factor
-               # ########  20231206 @Finn: set machine measurement errors to zero (raw values below zero should be set to zero before extrapolating etc)
-               # ########  20231206 @Finn:  We remove the column name *Concentration_DILUTION_FACTOR* from downstream analysis and simply stick to *Concentration*!
-               # ########
-               # Concentration = (Fit$coefficients[1]*MEASUREMENT),
-               # Concentration_DILUTION_FACTOR = Concentration*DILUTION,
-               Concentration = (Fit$coefficients[1] * (case_when(MEASUREMENT < 0 ~ 0, TRUE ~ MEASUREMENT))),
-               Concentration = Concentration * DILUTION,
-               
-               Is_Dose_Response = ifelse(str_detect(basename(input_plate_dir), "^DR_"), TRUE, FALSE)
+        mutate(
+          Plate = as.numeric(unlist(lapply(strsplit(gsub(".xlsx", "", x = basename(file)),   "_", fixed=TRUE), function(x) return(x[3])))),
+          Date  = as_date(str_extract(basename(file), "\\d{8}")),
+          MEASUREMENT = as.numeric(MEASUREMENT),
+          
+          # Adjust measurements and concentrations
+          Concentration = (Fit$coefficients[1] * (case_when(MEASUREMENT < 0 ~ 0, TRUE ~ MEASUREMENT))),
+          Concentration = Concentration * DILUTION,
+          
+          Is_Dose_Response = ifelse(str_detect(basename(file), "^DR_"), TRUE, FALSE)
         )
       
       All_plates_data <- rbind(All_plates_data, Plate)
@@ -219,17 +163,109 @@ ELISA_Fx <- function(Input_Directory, Output_Directory) {
 ################################################################################
 ################################################################################
 
-sem <- function(x) sd(x)/sqrt(length(x))
+calculate_fold_change <- function(DF, NEGATIVE_CTRL = NULL, FC_BASIS = "MEASUREMENT", stats_mode = "condition") {
+  # Ensure zero or missing values are replaced by half the smallest non-zero value
+  small_value <- ifelse(any(DF[[FC_BASIS]] > 0, na.rm = TRUE),
+                        min(DF[[FC_BASIS]][DF[[FC_BASIS]] > 0], na.rm = TRUE) / 2,
+                        1e-9) # Fallback to a very small positive value
+  
+  DF <- DF %>%
+    mutate(!!sym(FC_BASIS) := ifelse(!!sym(FC_BASIS) <= 0 | is.na(!!sym(FC_BASIS)), small_value, !!sym(FC_BASIS)))
+  
+  # Calculate mean and fold change
+  mean_fold_change <- DF %>%
+    group_by(CELL_LINE, CL_NUMBER, CL_NAME_ON_PLOT) %>%
+    summarise(
+      stim_mean = mean(if_else(CONDITION == "STIM", !!sym(FC_BASIS), NA_real_), na.rm = TRUE),
+      unstim_mean = mean(if_else(CONDITION == "UNSTIM", !!sym(FC_BASIS), NA_real_), na.rm = TRUE),
+      fold_change = stim_mean / unstim_mean,
+      .groups = "drop"
+    )
+  
+  # Compute daily fold change (optional, useful for negative control comparisons)
+  daily_fold_change <- DF %>%
+    group_by(CELL_LINE, CL_NUMBER, CL_NAME_ON_PLOT, STIM_DAY) %>%
+    summarise(
+      daily_stim_mean = mean(if_else(CONDITION == "STIM", !!sym(FC_BASIS), NA_real_), na.rm = TRUE),
+      daily_unstim_mean = mean(if_else(CONDITION == "UNSTIM", !!sym(FC_BASIS), NA_real_), na.rm = TRUE),
+      daily_fold_change = daily_stim_mean / daily_unstim_mean,
+      .groups = "drop"
+    )
+  
+  # Add negative control logic if applicable
+  if (!is.null(NEGATIVE_CTRL)) {
+    negative_control_fold_change <- daily_fold_change %>%
+      filter(CELL_LINE == NEGATIVE_CTRL | CL_NUMBER == NEGATIVE_CTRL | CL_NAME_ON_PLOT == NEGATIVE_CTRL) %>%
+      select(STIM_DAY, neg_fold_change = daily_fold_change)
+    
+    DF <- DF %>%
+      left_join(negative_control_fold_change, by = "STIM_DAY") %>%
+      left_join(daily_fold_change) %>%
+      left_join(mean_fold_change)
+  }
+  
+  # Perform statistics based on selected mode
+  stats <- if (stats_mode == "condition") {
+    # Stimulated vs. Unstimulated comparison
+    DF %>%
+      group_by(CELL_LINE) %>%
+      summarise(
+        fc_p_value = t.test(
+          x = if_else(CONDITION == "STIM", !!sym(FC_BASIS), NA_real_),
+          y = if_else(CONDITION == "UNSTIM", !!sym(FC_BASIS), NA_real_),
+          paired = FALSE
+        )$p.value,
+        fc_significance = case_when(
+          fc_p_value < 0.0001 ~ "****",
+          fc_p_value < 0.001  ~ "***",
+          fc_p_value < 0.01   ~ "**",
+          fc_p_value < 0.05   ~ "*",
+          TRUE ~ "ns"
+        ),
+        .groups = "drop"
+      )
+  } else if (stats_mode == "negative_control" && !is.null(NEGATIVE_CTRL)) {
+    # Experimental vs. Negative Control comparison
+    DF %>%
+      group_by(CELL_LINE) %>%
+      summarise(
+        fc_p_value = if (n() > 1) {
+          t.test(
+            x = fold_change,
+            y = neg_fold_change,
+            alternative = "greater"
+          )$p.value
+        } else {
+          NA_real_ # Assign NA if insufficient values
+        },
+        fc_significance = case_when(
+          is.na(fc_p_value) ~ NA_character_,
+          fc_p_value < 0.0001 ~ "****",
+          fc_p_value < 0.001  ~ "***",
+          fc_p_value < 0.01   ~ "**",
+          fc_p_value < 0.05   ~ "*",
+          TRUE ~ "ns"
+        ),
+        .groups = "drop"
+      )
+  } else {
+    stop("Invalid stats_mode or missing NEGATIVE_CTRL.")
+  }
+  
+  # Return results as a list
+  return(list(
+    fold_change_data = DF %>%
+      left_join(mean_fold_change) %>%
+      left_join(daily_fold_change),
+    statistics = stats#,
+    # statistics_mean = stats_mean
+  ))
+}
 
 ################################################################################
 ################################################################################
 ################################################################################
-
-# DF = CHARMS
-# NEGATIVE_CTRL = "3xKO"
-# POSITIVE_CTRL = "Wild Type"
-
-process_ELISA_data <- function(DF, NEGATIVE_CTRL, POSITIVE_CTRL) {
+process_ELISA_data <- function(DF, NEGATIVE_CTRL, POSITIVE_CTRL, FC_BASIS = "MEASUREMENT", stats_mode = "condition") {
   
   group_vars <- c("STIM_DAY", "Date")
   
@@ -250,63 +286,130 @@ process_ELISA_data <- function(DF, NEGATIVE_CTRL, POSITIVE_CTRL) {
         summarise(baseline_control_value = min(Concentration))
     }
     
-    # Join the calculated values with the dataset
-    DF_baseline_adj <- left_join(DF, baseline) %>%
+    DF_baseline_adj <- left_join(DF, baseline, by = group_vars) %>%
       mutate(Concentration_REDUCED = case_when(!is.na(baseline_control_value) ~ Concentration - baseline_control_value, TRUE ~ Concentration))
     
     return(DF_baseline_adj)
   }
   
-  DF_baseline_adj <- get_baseline(DF = DF, NEGATIVE_CTRL = NEGATIVE_CTRL)
-  
+  # Get normalization value
   get_normalization_value <- function(DF, POSITIVE_CTRL) {
+    positive_ctrl_exists <- any(
+      (DF$CELL_LINE %in% POSITIVE_CTRL & DF$CONDITION == "STIM") |
+        (DF$CL_NAME_ON_PLOT %in% POSITIVE_CTRL & DF$CONDITION == "STIM") |
+        (DF$CL_NUMBER %in% POSITIVE_CTRL & DF$CONDITION == "STIM")
+    )
     
-    if (any(DF$CELL_LINE %in% POSITIVE_CTRL & DF$CONDITION %in% "STIM" | DF$CL_NAME_ON_PLOT %in% POSITIVE_CTRL & DF$CONDITION %in% "STIM")) {
+    if (positive_ctrl_exists) {
       normalization_control_value <- DF %>%
+        filter((CELL_LINE %in% POSITIVE_CTRL & CONDITION == "STIM") |
+                 (CL_NAME_ON_PLOT %in% POSITIVE_CTRL & CONDITION == "STIM") |
+                 (CL_NUMBER %in% POSITIVE_CTRL & CONDITION == "STIM")) %>%
         group_by(!!!syms(group_vars)) %>%
-        filter((CELL_LINE %in% POSITIVE_CTRL & CONDITION == "STIM") | (CL_NAME_ON_PLOT %in% POSITIVE_CTRL & CONDITION == "STIM")) %>%
-        summarise(normalization_control_value = case_when(mean(Concentration_REDUCED) > 0 ~ mean(Concentration_REDUCED), TRUE ~ -Inf))
+        summarise(normalization_control_value = case_when(
+          mean(Concentration_REDUCED) > 0 ~ mean(Concentration_REDUCED),
+          TRUE ~ -Inf
+        ))
     } else {
       normalization_control_value <- DF %>%
         group_by(!!!syms(group_vars)) %>%
         summarise(normalization_control_value = max(Concentration))
     }
     
-    # Join the calculated control means
-    DF_normalization_adj <- left_join(DF, normalization_control_value)
-    
-    return(DF_normalization_adj)
+    return(normalization_control_value)
   }
-  
-  DF_normalization_adj <- get_normalization_value(DF = DF_baseline_adj, POSITIVE_CTRL = POSITIVE_CTRL)
-  
-  
-  # Normalize ELISA data
+
+    # Normalize ELISA data
   normalize_ELISA <- function(DF) {
-    
     DATA_NORMALIZED <- DF %>%
       group_by(!!!syms(group_vars), CELL_LINE, CONDITION) %>%
-      mutate(Concentration_NORMALIZED = case_when(Concentration_REDUCED / normalization_control_value < 0 ~ 0, TRUE ~ Concentration_REDUCED / normalization_control_value),
-             triplicate_mean_per_day  = mean(Concentration_NORMALIZED)) %>%
+      mutate(
+        Concentration_NORMALIZED = ifelse(Concentration_REDUCED / normalization_control_value < 0, 0, Concentration_REDUCED / normalization_control_value),
+        triplicate_mean_per_day = mean(Concentration_NORMALIZED, na.rm = TRUE)
+      ) %>%
       ungroup()
     return(DATA_NORMALIZED)
   }
   
-  DATA_NORMALIZED <- DF_normalization_adj %>%
-    group_by(!!!syms(group_vars), CELL_LINE, CONDITION) %>%
-    mutate(Concentration_NORMALIZED = ifelse(Concentration_REDUCED / normalization_control_value < 0, 0, Concentration_REDUCED / normalization_control_value),
-           triplicate_mean_per_day  = mean(Concentration_NORMALIZED)) %>%
-    ungroup()
+  # Process the data
+  DF_baseline_adj <- get_baseline(DF = DF, NEGATIVE_CTRL = NEGATIVE_CTRL)
+  DF_normalization_adj <- DF_baseline_adj %>% 
+    left_join(get_normalization_value(DF_baseline_adj, POSITIVE_CTRL), by = group_vars)
+  DATA_NORMALIZED <- normalize_ELISA(DF_normalization_adj)
   
-  return(DATA_NORMALIZED)
+  DATA_WITH_FOLD_CHANGE <- calculate_fold_change(DATA_NORMALIZED, NEGATIVE_CTRL, FC_BASIS, stats_mode)
+  # Add metadata for controls
+  DATA_WITH_FOLD_CHANGE_2 <- DATA_WITH_FOLD_CHANGE[[2]]
+  DATA_WITH_FOLD_CHANGE_2 <- DATA_WITH_FOLD_CHANGE_2 %>%
+    mutate(
+      POSITIVE_CTRL = unique(DATA_NORMALIZED$CL_NAME_ON_PLOT[
+        DATA_NORMALIZED$CELL_LINE == POSITIVE_CTRL |
+          DATA_NORMALIZED$CL_NUMBER == POSITIVE_CTRL |
+          DATA_NORMALIZED$CL_NAME_ON_PLOT == POSITIVE_CTRL]),
+      NEGATIVE_CTRL = NEGATIVE_CTRL
+    )
+  
+  # Join the calculated values with the normalized dataset
+  ANALYZED_DATA <- 
+    left_join(DATA_NORMALIZED, DATA_WITH_FOLD_CHANGE[[1]], relationship = "many-to-many") %>%
+    left_join(DATA_WITH_FOLD_CHANGE_2)
+  
+  return(ANALYZED_DATA)
 }
 
 ################################################################################
 ################################################################################
 ################################################################################
 
+process_data_for_plot <- function(data, change_unstim_plt_col = T, unstim_plt_col = "#BEBDBD", unstim_plt_col_lightest = F) {
+  # Reorder cell lines for plotting
+  data$CL_NAME_ON_PLOT <- reorder(data$CL_NAME_ON_PLOT, -data$ORDER_NO)
+  
+  # Reformat condition for legend text
+  data$CONDITION <- factor(data$CONDITION, levels = c("UNSTIM", "STIM"))
+  if (unstim_plt_col_lightest) {
+    data$PLOTTING_COLOR[data$CONDITION == "UNSTIM"] <- data$PLT_LIGHTEST[data$CONDITION == "UNSTIM"] 
+  } else if (change_unstim_plt_col) {
+    data$PLOTTING_COLOR[data$CONDITION == "UNSTIM"] <- unstim_plt_col 
+  }
+  
+  return(data)
+}
+
+################################################################################
+################################################################################
+################################################################################
+
+prepare_plotting_means <- function(data, group_var = c("CELL_LINE", "CONDITION", "STIM_DAY", "CL_NAME_ON_PLOT", "PATHWAY", "STIMULANT", "STIM_CONCENTRATION", "PLOTTING_COLOR", "ORDER_NO", "POSITIVE_CTRL", "NEGATIVE_CTRL")) {
+  # Group and summarize data for plotting_means
+  plotting_means <- data %>%
+    group_by(!!!syms(group_var)) %>%
+    summarise(IL2_concentration_Dilution_Factor_mean = mean(Concentration),
+              Relative_Intensity_mean = mean(Concentration_NORMALIZED)) %>%
+    as.data.table()
+  
+  # Round Relative_Intensity_mean
+  plotting_means$Relative_Intensity_mean <- round(plotting_means$Relative_Intensity_mean, 3)
+  
+  # Reorder CL_NAME_ON_PLOT
+  plotting_means$CL_NAME_ON_PLOT <- reorder(plotting_means$CL_NAME_ON_PLOT, -plotting_means$ORDER_NO)
+  
+  return(plotting_means)
+}
+
+################################################################################
+################################################################################
+################################################################################
+
+# sem <- function(x) sd(x)/sqrt(length(x))
+sem <- function(x) sd(x, na.rm = TRUE) / sqrt(sum(!is.na(x)))
+
+################################################################################
+################################################################################
+################################################################################
+
 perform_statistical_analysis <- function(DATA, GROUP_BY_COLUMN, TESTING_COLUMN) {
-  # Internal function for pairwise t-test
+
   unpaired_ttest <- function(DATA, return_annotation = FALSE) {
     
     if (nrow(DATA) < 3) {
@@ -318,7 +421,6 @@ perform_statistical_analysis <- function(DATA, GROUP_BY_COLUMN, TESTING_COLUMN) 
     }
     
     # unpaired t-test
-    # p_values <- t.test(DATA[[TESTING_COLUMN]]~ DATA$CONDITION)$p.value
     formula  <- as.formula(paste(TESTING_COLUMN, "~ CONDITION"))
     p_values <- ggpubr::compare_means(formula,
                                       data = DATA,
@@ -354,85 +456,61 @@ perform_statistical_analysis <- function(DATA, GROUP_BY_COLUMN, TESTING_COLUMN) 
 ################################################################################
 ################################################################################
 
-process_data_for_plot <- function(data, change_unstim_plt_col = T, unstim_plt_col = "#BEBDBD") {
-  # Reorder cell lines for plotting
-  data$CL_NAME_ON_PLOT <- reorder(data$CL_NAME_ON_PLOT, -data$ORDER_NO)
+prepare_and_plot <- function(plotting_means, plotting_stats, x_mean, x_sem, x_label, cl_label = "CL_NAME_ON_PLOT") {
   
-  # Reformat condition for legend text
-  data$CONDITION <- factor(data$CONDITION, levels = c("UNSTIM", "STIM"))
-  if (change_unstim_plt_col) {
-    data$PLOTTING_COLOR[data$CONDITION == "UNSTIM"] <- unstim_plt_col 
+  # print if stats has significance column
+  if("significance" %in% colnames(plotting_stats)){ 
+    cat("Yay! Stats were calculated!\n") 
+  } else { 
+    cat("Sorry, couldn't calculate stats!\n") 
   }
   
-  return(data)
-}
-
-################################################################################
-################################################################################
-################################################################################
-
-prepare_plotting_means <- function(data, group_var = c("CELL_LINE", "CONDITION", "STIM_DAY", "CL_NAME_ON_PLOT", "PATHWAY", "STIMULANT", "STIM_CONCENTRATION", "PLOTTING_COLOR", "ORDER_NO")) {
-  # Group and summarize data for plotting_means
-  plotting_means <- data %>%
-    group_by(!!!syms(group_var)) %>%
-    summarise(IL2_concentration_Dilution_Factor_mean = mean(Concentration),
-              Relative_Intensity_mean = mean(Concentration_NORMALIZED)) %>%
-    as.data.table()
-  
-  # Round Relative_Intensity_mean
-  plotting_means$Relative_Intensity_mean <- round(plotting_means$Relative_Intensity_mean, 3)
-  
-  # Reorder CL_NAME_ON_PLOT
   plotting_means$CL_NAME_ON_PLOT <- reorder(plotting_means$CL_NAME_ON_PLOT, -plotting_means$ORDER_NO)
+  plotting_stats$CL_NAME_ON_PLOT <- reorder(plotting_stats$CL_NAME_ON_PLOT, -plotting_stats$ORDER_NO)
   
-  return(plotting_means)
-}
-
-################################################################################
-################################################################################
-################################################################################
-
-process_statistical_analysis <- function(data, group_var, value_var) {
-  # Perform statistical analysis
-  statistical_significance <- perform_statistical_analysis(data, group_var, value_var)
+  # !!sym(x_mean) dynamically references the column name stored in x_mean, 
+  # allowing flexible use of different columns in plots or calculations.
+  ELISA_PLOT <- ggplot(data = plotting_stats, aes(x = !!sym(x_mean), y = CL_NAME_ON_PLOT, fill = PLOTTING_COLOR, pattern = CONDITION, group = rev(CONDITION))) +
+    geom_col(aes(col = PLOTTING_COLOR), position = position_dodge(width = 0.7), width = 0.68, alpha = 0.5) +
+    geom_point(data = plotting_means, aes(x = !!sym(x_mean), y = CL_NAME_ON_PLOT, fill = PLOTTING_COLOR), 
+               col = "black", shape = 21, size = POINTS, position = position_jitterdodge(dodge.width = 0.5, jitter.width = 0.4, seed = 750), show.legend = FALSE) +
+    scale_y_discrete(expand = c(0, 0)) +
+    scale_fill_manual(name  = cl_label, values = plotting_means$PLOTTING_COLOR, breaks = plotting_means$PLOTTING_COLOR, labels = ifelse(plotting_means$CONDITION == "UNSTIM", paste0("- ", plotting_means$STIMULANT), paste0("+ ", plotting_means$STIMULANT))) +
+    scale_color_manual(name = cl_label, values = plotting_means$PLOTTING_COLOR, breaks = plotting_means$PLOTTING_COLOR, labels = ifelse(plotting_means$CONDITION == "UNSTIM", paste0("- ", plotting_means$STIMULANT), paste0("+ ", plotting_means$STIMULANT))) +
+    labs(x = x_label, y = "") +
+    guides(color = "none", fill = guide_legend(reverse = TRUE)) +
+    theme_cowplot(font_size = SIZE, font_family = FONT) +
+    theme(axis.text.x       = element_text(size = SIZE, vjust = 0.6),
+          axis.title.y      = element_blank(),
+          legend.position   = "bottom",
+          legend.title      = element_blank(),
+          legend.text       = element_text(size = SIZE),
+          legend.key.size   = unit(9, "mm"))
   
-  # Turn statistical_significance list into data.table
-  stat_significance_dt <- data.table(
-    CL_NAME_ON_PLOT = names(statistical_significance$annotations),
-    p_value = statistical_significance$annotations,
-    significance = statistical_significance$p_values
-  )
-  
-  return(stat_significance_dt)
-}
-
-################################################################################
-################################################################################
-################################################################################
-
-prepare_plotting_stats <- function(data, stat_significance_dt, 
-                                   group_var = c("CELL_LINE", "CONDITION", "CL_NAME_ON_PLOT", "PATHWAY", "STIMULANT", "STIM_CONCENTRATION", "PLOTTING_COLOR", "ORDER_NO"),
-                                   mean_var = "triplicate_mean_per_day",
-                                   change_unstim_plt_col = T,
-                                   unstim_plt_col = "#BEBDBD") {
-  # Group and summarize data for plotting_stats
-  plotting_stats_main <- data %>%
-    group_by(!!!syms(group_var)) %>%
-    summarise(
-      IL2_concentration_Dilution_Factor_mean = mean(Concentration),
-      IL2_concentration_Dilution_Factor_sem = sem(Concentration),
-      Relative_Intensity_mean = mean(!!!syms(mean_var)),
-      Relative_Intensity_sem = sem(!!!syms(mean_var))
-    ) %>%
-    as.data.table() %>%
-    left_join(stat_significance_dt)
-  
-  plotting_stats_main$CONDITION <- factor(plotting_stats_main$CONDITION, levels = c("UNSTIM", "STIM"))
-  plotting_stats_main$CL_NAME_ON_PLOT <- reorder(plotting_stats_main$CL_NAME_ON_PLOT, -plotting_stats_main$ORDER_NO)
-  
-  if (change_unstim_plt_col) {
-    plotting_stats_main$PLOTTING_COLOR[plotting_stats_main$CONDITION == "UNSTIM"] <- unstim_plt_col
+  if ("significance" %in% colnames(plotting_stats)) {
+    ELISA_PLOT <- ELISA_PLOT +
+      geom_errorbar(aes(y = !!sym(cl_label),
+                        xmin = !!sym(x_mean) - !!sym(x_sem),
+                        xmax = !!sym(x_mean) + !!sym(x_sem)),
+                    linewidth = .75, position = position_dodge(width = 0.5), width = 0.25) +
+      geom_text(data = plotting_stats, aes(x = 1.2 * max(!!sym(x_mean)), y = CL_NAME_ON_PLOT, label = significance), 
+                hjust = .5, vjust = 1, size = TEXT)
   }
   
-  return(plotting_stats_main)
+  if (length(unique(plotting_means$POSITIVE_CTRL)) > 1 & x_mean == "Relative_Intensity_mean") {
+    ELISA_PLOT <- ELISA_PLOT +
+      facet_wrap(~POSITIVE_CTRL, scales = "free", ncol = 1)
+  }
+  
+  print(ELISA_PLOT)
+  
 }
+
+################################################################################
+################################################################################
+################################################################################
+
+
+
+
+
