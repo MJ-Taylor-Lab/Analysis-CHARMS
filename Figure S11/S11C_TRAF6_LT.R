@@ -12,8 +12,8 @@ figure <- "Figure S11/S11C/"
 source("~/Documents/Github/Analysis-CHARMS/Figure S11/S11_4C_4D_4E_T6BM1x3x5x_0_Setup.R")
 source("~/Documents/Github/Analysis-CHARMS/functions.R")
 
-NAME_KEY <- fread("~/Documents/Github/Analysis-CHARMS/Figure S11/Figure_4_ELISA_CL_KEY.csv", header = T) %>% select(CL_NAME_ON_PLOT, COHORT, PLOTTING_COLOR, PLT_LIGHTER, PLT_LIGHTEST)
-ORDER_NO <- fread("~/Documents/Github/Analysis-CHARMS/Figure S11/Figure_4_ELISA_CL_KEY.csv", header = T) %>% select(CL_NAME_ON_PLOT, COHORT, ORDER_NO)
+NAME_KEY <- fread("~/Documents/Github/Analysis-CHARMS/Figure S11/Figure_S11C_KEY.csv", header = T) %>% select(CL_NAME_ON_PLOT, COHORT, PLOTTING_COLOR, PLT_LIGHTER, PLT_LIGHTEST)
+ORDER_NO <- fread("~/Documents/Github/Analysis-CHARMS/Figure S11/Figure_S11C_KEY.csv", header = T) %>% select(CL_NAME_ON_PLOT, COHORT, ORDER_NO)
 
 ################################################################################
 
@@ -52,7 +52,6 @@ Cell_Summary <- main %>%
 
 Cell_Summary$CATEGORY_DWELL_TIME <- factor(Cell_Summary$CATEGORY_DWELL_TIME, levels = c(LOW_CAT, MEDIUM_CAT, HIGH_CAT))
 
-
 Mean_LT <- Cell_Summary %>%
   filter(!is.na(COHORT)) %>%
   group_by(COHORT) %>% 
@@ -61,7 +60,6 @@ Mean_LT <- Cell_Summary %>%
   left_join(NAME_KEY)
 
 Mean_Total <- Cell_Summary %>%
-  filter(!is.na(COHORT)) %>%
   group_by(COHORT, CATEGORY_DWELL_TIME) %>% 
   count(CATEGORY_DWELL_TIME, COHORT, name = "N_CATEGORY_DWELL_TIME", .drop = FALSE) %>% 
   group_by(COHORT) %>% 
@@ -108,7 +106,7 @@ plotting_data <- Mean_Total %>%
            CATEGORY_DWELL_TIME == HIGH_CAT & CATEGORY == "PLOTTING_COLOR")
 
 # Create the ggplot
-figure_S5C_TRAF6_LT <- ggplot(data = plotting_data,
+figure_S11C_TRAF6_LT <- ggplot(data = plotting_data,
                                            aes(x = CL_NAME_ON_PLOT, y = PCT_RECRUITMENT * 100, fill = PLOTTING_COLOR, group = CATEGORY_DWELL_TIME)) +
   geom_col(width = 0.7, size = 0.75, color = "black", linewidth = 0.25) +
   # scale_color_identity() +
@@ -124,7 +122,7 @@ figure_S5C_TRAF6_LT <- ggplot(data = plotting_data,
   guides(color = "none", fill = guide_legend(title = "TRAF6 Lifetime", reverse = TRUE)) +
   coord_flip()
 
-figure_S5C_TRAF6_LT
+figure_S11C_TRAF6_LT
 
 if (save) {
   save_to_data_tay <- file.path("/Volumes/TAYLOR-LAB/Synthetic Myddosome Paper/6_Manuscript/Source files/", figure)
@@ -134,7 +132,7 @@ if (save) {
   if (dir.exists(save_to)) {print(paste0("Files will be saved to ", save_to))} else {dir.create(save_to, recursive = T); print(paste0("Files will be saved to ", save_to))}
   
   # save figure
-  ggsave(filename = paste0(save_to, paste0("/figure_S5C_TRAF6_LT.svg")), plot = last_plot(), device = "svg", width = 10, height = 10)
+  ggsave(filename = paste0(save_to, paste0("/figure_S11C_TRAF6_LT.svg")), plot = last_plot(), device = "svg", width = 10, height = 10)
   
   # save tables
   if (!file.exists(file.path(save_to, "Cell_Summary.csv.gz"))) {fwrite(Cell_Summary, file.path(save_to, "Cell_Summary.csv")); gzip(file.path(save_to, "Cell_Summary.csv"), destname=file.path(save_to, "Cell_Summary.csv.gz"))}

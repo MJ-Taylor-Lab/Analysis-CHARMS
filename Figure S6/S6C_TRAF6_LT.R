@@ -5,15 +5,15 @@ pacman::p_load (data.table, dplyr, plotrix, ggplot2, parallel, ggpubr, scales, t
 
 # SETTINGS
 save   <- TRUE
-figure <- "Figure S2/S2C/"
+figure <- "Figure S6/S6C/"
 
 ################################################################################
 
 source("~/Documents/Github/Analysis-CHARMS/Figure S6/S6D_2F_Fig2Lines_0_Setup.R")
 source("~/Documents/Github/Analysis-CHARMS/functions.R")
 
-NAME_KEY <- fread("~/Documents/Github/Analysis-CHARMS/Figure S6/Figure_2_ELISA_CL_KEY.csv", header = T) %>% select(CL_NAME_ON_PLOT, COHORT, PLOTTING_COLOR)
-ORDER_NO <- fread("~/Documents/Github/Analysis-CHARMS/Figure S6/Figure_2_ELISA_CL_KEY.csv", header = T) %>% select(CL_NAME_ON_PLOT, COHORT, ORDER_NO)
+NAME_KEY <- fread("~/Documents/Github/Analysis-CHARMS/Figure S6/Figure_S6C_KEY.csv", header = T) %>% select(CL_NAME_ON_PLOT, COHORT)
+ORDER_NO <- fread("~/Documents/Github/Analysis-CHARMS/Figure S6/Figure_S6C_KEY.csv", header = T) %>% select(CL_NAME_ON_PLOT, COHORT, ORDER_NO)
 
 ################################################################################
 
@@ -67,7 +67,7 @@ Mean_Total <- Cell_Summary %>%
   group_by(COHORT, CATEGORY_DWELL_TIME) %>% 
   summarise(PCT_RECRUITMENT = mean(PCT_RECRUITMENT)) %>% 
   as.data.table() %>%
-  left_join(NAME_KEY, relationship = "many-to-many") %>%
+  left_join(NAME_KEY) %>%
   unique()
 
 
@@ -92,12 +92,12 @@ Mean_Total_pivot <- Mean_Total %>%
 
 plotting_data <- Mean_Total
 
-plotting_data <- left_join(plotting_data, ORDER_NO, relationship = "many-to-many") %>% unique()
+plotting_data <- left_join(plotting_data, ORDER_NO) %>% unique()
 plotting_data$CL_NAME_ON_PLOT <- reorder(plotting_data$CL_NAME_ON_PLOT, -plotting_data$ORDER_NO)
 plotting_data$BINNING_COLOR <- case_match(plotting_data$CATEGORY_DWELL_TIME, LOW_CAT    ~ "#fff3e5", MEDIUM_CAT ~ "#FDEAA6", HIGH_CAT   ~ "#b41f24")
 
 # Create the ggplot
-figure_S2C_TRAF6_LT <- ggplot(data = plotting_data, aes(x = CL_NAME_ON_PLOT, y = PCT_RECRUITMENT * 100, fill = BINNING_COLOR, group = CATEGORY_DWELL_TIME)) +
+figure_S6C_TRAF6_LT <- ggplot(data = plotting_data, aes(x = CL_NAME_ON_PLOT, y = PCT_RECRUITMENT * 100, fill = BINNING_COLOR, group = CATEGORY_DWELL_TIME)) +
   geom_col(width = 0.7, size = 0.75, 
            color = "black",
            linewidth = 0.75, alpha = 1) +
@@ -113,7 +113,7 @@ figure_S2C_TRAF6_LT <- ggplot(data = plotting_data, aes(x = CL_NAME_ON_PLOT, y =
   guides(color = "none", fill = guide_legend(title = "TRAF6 Lifetime", reverse = TRUE)) +
   coord_flip()
 
-figure_S2C_TRAF6_LT
+figure_S6C_TRAF6_LT
 
 if (save) {
   save_to_data_tay <- file.path("/Volumes/TAYLOR-LAB/Synthetic Myddosome Paper/6_Manuscript/Source files/", figure)
@@ -123,7 +123,7 @@ if (save) {
   if (dir.exists(save_to)) {print(paste0("Files will be saved to ", save_to))} else {dir.create(save_to, recursive = T); print(paste0("Files will be saved to ", save_to))}
   
   # save figure
-  ggsave(filename = paste0(save_to, paste0("/figure_S2C_TRAF6_LT.svg")), plot = last_plot(), device = "svg", width = 12, height = 16)
+  ggsave(filename = paste0(save_to, paste0("/figure_S6C_TRAF6_LT.svg")), plot = last_plot(), device = "svg", width = 12, height = 16)
   
   # save tables
   if (!file.exists(file.path(save_to, "Cell_Summary.csv.gz"))) {fwrite(Cell_Summary, file.path(save_to, "Cell_Summary.csv")); gzip(file.path(save_to, "Cell_Summary.csv"), destname=file.path(save_to, "Cell_Summary.csv.gz"))}
